@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Mes Dépenses</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary: #0F172A;
+            --primary-light: #1E293B;
+            --accent: #10B981;
+            --accent-hover: #059669;
+            --danger: #EF4444;
+            --text: #F8FAFC;
+            --text-secondary: #94A3B8;
+            --border: #334155;
+            --surface: #1E293B;
+            --surface-elevated: #2D3B52;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .app {
+            min-height: 100vh;
+            padding-bottom: 80px;
+        }
+
+        .header {
+            background: rgba(30, 41, 59, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            padding: 1.25rem 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .header-subtitle {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            background: var(--surface);
+            border-radius: 16px;
+            padding: 0.5rem;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 0.875rem;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            font-weight: 600;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            background: var(--accent);
+            color: white;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .card {
+            background: var(--surface);
+            border-radius: 20px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            border: 1px solid var(--border);
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text);
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: var(--primary-light);
+            color: var(--text);
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+
+        .form-group select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            background-size: 1.25rem;
+            padding-right: 2.5rem;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-top: 0.5rem;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 1.25rem;
+            height: 1.25rem;
+            cursor: pointer;
+        }
+
+        .checkbox-group label {
+            margin: 0;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 1rem;
+            border: none;
+            border-radius: 14px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+        }
+
+        .btn-primary:active {
+            transform: scale(0.98);
+        }
+
+        .btn-secondary {
+            background: var(--surface-elevated);
+            color: var(--text);
+            border: 1px solid var(--border);
+            margin-top: 1rem;
+        }
+
+        .btn-export {
+            background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+            color: white;
+            margin-top: 1rem;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+        }
+
+        .total-card {
+            background: linear-gradient(135deg, var(--accent) 0%, #059669 100%);
+            border-radius: 20px;
+            padding: 1.75rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);
+        }
+
+        .total-label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 0.5rem;
+        }
+
+        .total-amount {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: white;
+            font-family: 'Courier New', monospace;
+        }
+
+        .summary-item {
+            background: var(--surface-elevated);
+            border-radius: 16px;
+            padding: 1.25rem;
+            border: 1px solid var(--border);
+            margin-bottom: 1rem;
+        }
+
+        .summary-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .summary-category {
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        .summary-amount {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--accent);
+            font-family: 'Courier New', monospace;
+        }
+
+        .summary-count {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--text-secondary);
+        }
+
+        .status-message {
+            padding: 1rem;
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .status-success {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: var(--accent);
+        }
+
+        .status-error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: var(--danger);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .export-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .btn-small {
+            padding: 0.75rem;
+            font-size: 0.9rem;
+        }
+
+        @supports (padding: max(0px)) {
+            .header {
+                padding-top: max(1.25rem, env(safe-area-inset-top));
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app" id="app">
+        <header class="header">
+            <h1>💰 Mes Dépenses</h1>
+            <p class="header-subtitle">Suivi personnel avec export Excel</p>
+        </header>
+
+        <div class="container">
+            <div id="statusMessage"></div>
+
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('add')">Ajouter</button>
+                <button class="tab" onclick="switchTab('summary')">Résumé</button>
+            </div>
+
+            <!-- Formulaire d'ajout -->
+            <div id="addTab" class="card">
+                <form onsubmit="handleSubmit(event)">
+                    <div class="form-group">
+                        <label>Date *</label>
+                        <input type="date" id="date" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Catégorie *</label>
+                        <select id="categorie" onchange="updateSubcategories()" required>
+                            <option value="">Sélectionner...</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Sous-catégorie *</label>
+                        <select id="sousCategorie" required>
+                            <option value="">Sélectionner...</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Enseigne</label>
+                        <input type="text" id="enseigne" placeholder="Ex: Carrefour, EDF...">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Montant (€) *</label>
+                        <input type="number" id="montant" step="0.01" placeholder="0.00" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Compte *</label>
+                        <select id="compte">
+                            <option value="Boursorama">Boursorama</option>
+                            <option value="CMBcommun">CMBcommun</option>
+                            <option value="CarteResto">CarteResto</option>
+                            <option value="Fortuneo">Fortuneo</option>
+                            <option value="Cash">Cash</option>
+                            <option value="Autre">Autre</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Période</label>
+                        <select id="periode">
+                            <option value="0">Quotidien</option>
+                            <option value="1">Mensuel</option>
+                            <option value="3">Trimestriel</option>
+                            <option value="12">Annuel</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="kids">
+                            <label for="kids">Dépense enfants</label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="previsionnel">
+                            <label for="previsionnel">Prévisionnel</label>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        ✓ Enregistrer la dépense
+                    </button>
+                </form>
+
+                <button onclick="syncData()" class="btn btn-secondary">
+                    ☁️ Synchroniser
+                </button>
+            </div>
+
+            <!-- Résumé -->
+            <div id="summaryTab" class="hidden">
+                <div class="total-card">
+                    <div class="total-label">Total du mois</div>
+                    <div class="total-amount" id="totalAmount">0,00 €</div>
+                </div>
+                
+                <div class="export-options">
+                    <button onclick="exportToExcel('month')" class="btn btn-export btn-small">
+                        📊 Export Mois
+                    </button>
+                    <button onclick="exportToExcel('all')" class="btn btn-export btn-small">
+                        📊 Export Tout
+                    </button>
+                </div>
+
+                <div id="summaryList"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Données des catégories
+        const CATEGORIES = {
+            "Abonnements & téléphonie": ["Abonnements & téléphonie", "Journaux, magazines…", "Multimedia à domicile (TV, internet, téléphonie…)", "Téléphonie (fixe et mobile)"],
+            "Allocations": ["Allocations familiales"],
+            "Auto & Moto": ["Assurances (Auto/Moto)", "Auto / Moto - Autres", "Carburant", "Entretien - Réparation", "Parking", "Péages"],
+            "Cadeaux et solidarité": ["Dons et Cadeaux"],
+            "Chèques": ["Chèques"],
+            "Dépenses d'épargne": ["Epargne financière (retraite, prévoyance, PEA, assurance-vie…)"],
+            "Dépôts (cartes/chèques/espèces)": ["Dépôts (cartes/chèques/espèces)"],
+            "Education & Famille": ["Etudes (formation, fournitures, cantines…)"],
+            "Emprunts (hors immobilier)": ["Crédit conso"],
+            "Impôts & Taxes": ["Impôts & Taxes", "Impôts & Taxes - Autres"],
+            "Logement": ["Assurance habitation et RC", "Emprunt immobilier", "Energie (électricité, gaz, fuel, chauffage…)", "Loyers, Charges", "Travaux, réparation, entretien, aménagement…"],
+            "Loisirs et sorties": ["Club / association (sport, hobby, art…)", "Dépenses Jeux et paris", "Divertissement - culture (ciné, théâtre, concerts…)", "Loisirs - Autres", "Restaurants, bars, discothèques…"],
+            "Non catégorisé": ["Non catégorisé"],
+            "Remboursements": ["Remboursements", "Remboursements - Autres", "Remboursements frais de santé", "Remboursements frais de vie quotidienne"],
+            "Revenus du travail": ["Salaire fixe"],
+            "Santé": ["Complémentaires santé", "Médecins et frais médicaux", "Optique, audition…", "Pharmacie et laboratoire", "Santé - Autres"],
+            "Services financiers & professionnels": ["Frais bancaires et de gestion (dont agios)", "Services financiers & professionnels - Autres"],
+            "Vie quotidienne": ["Alimentation", "Animaux domestiques", "Bien-être et soins (coiffeur, parfums…)", "Bricolage et jardinage", "Electronique et informatique", "Equipements sportifs et artistiques", "Livres, CD/DVD, bijoux, jouets…", "Mobilier, électroménager, décoration…", "Vie quotidienne", "Vie Quotidienne - Autres", "Vêtements et accessoires"],
+            "Virements émis": ["Virements émis"],
+            "Virements reçus": ["Virements reçus"],
+            "Voyages & Transports": ["Agences de voyages", "Hébergement (hôtels, camping…)", "Location de véhicules", "Taxis", "Transports longue distance (avions, trains…)", "Transports quotidiens (métro, bus…)"]
+        };
+
+        // Initialisation
+        function init() {
+            document.getElementById('date').valueAsDate = new Date();
+            
+            const catSelect = document.getElementById('categorie');
+            Object.keys(CATEGORIES).forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat;
+                option.textContent = cat;
+                catSelect.appendChild(option);
+            });
+            
+            loadExpenses();
+            updateSummary();
+        }
+
+        function updateSubcategories() {
+            const cat = document.getElementById('categorie').value;
+            const subSelect = document.getElementById('sousCategorie');
+            subSelect.innerHTML = '<option value="">Sélectionner...</option>';
+            
+            if (cat && CATEGORIES[cat]) {
+                CATEGORIES[cat].forEach(subcat => {
+                    const option = document.createElement('option');
+                    option.value = subcat;
+                    option.textContent = subcat;
+                    subSelect.appendChild(option);
+                });
+                subSelect.value = CATEGORIES[cat][0];
+            }
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            if (tab === 'add') {
+                document.getElementById('addTab').classList.remove('hidden');
+                document.getElementById('summaryTab').classList.add('hidden');
+            } else {
+                document.getElementById('addTab').classList.add('hidden');
+                document.getElementById('summaryTab').classList.remove('hidden');
+                updateSummary();
+            }
+        }
+
+        function handleSubmit(e) {
+            e.preventDefault();
+            
+            const expense = {
+                id: Date.now(),
+                date: document.getElementById('date').value,
+                sousCategorie: document.getElementById('sousCategorie').value,
+                categorie: document.getElementById('categorie').value,
+                enseigne: document.getElementById('enseigne').value,
+                montant: parseFloat(document.getElementById('montant').value),
+                compte: document.getElementById('compte').value,
+                kids: document.getElementById('kids').checked,
+                periode: document.getElementById('periode').value,
+                previsionnel: document.getElementById('previsionnel').checked,
+                manuelTel: true
+            };
+            
+            saveExpense(expense);
+            showMessage('Dépense enregistrée !', 'success');
+            
+            document.getElementById('montant').value = '';
+            document.getElementById('enseigne').value = '';
+            document.getElementById('kids').checked = false;
+            document.getElementById('previsionnel').checked = false;
+        }
+
+        function saveExpense(expense) {
+            const expenses = getExpenses();
+            expenses.push(expense);
+            localStorage.setItem('expenses', JSON.stringify(expenses));
+        }
+
+        function getExpenses() {
+            const data = localStorage.getItem('expenses');
+            return data ? JSON.parse(data) : [];
+        }
+
+        function loadExpenses() {
+            return getExpenses();
+        }
+
+        function getCurrentMonthExpenses() {
+            const expenses = getExpenses();
+            const now = new Date();
+            const currentMonth = now.getMonth();
+            const currentYear = now.getFullYear();
+            
+            return expenses.filter(exp => {
+                const expDate = new Date(exp.date);
+                return expDate.getMonth() === currentMonth && 
+                       expDate.getFullYear() === currentYear &&
+                       exp.manuelTel === true;
+            });
+        }
+
+        function updateSummary() {
+            const expenses = getCurrentMonthExpenses();
+            const summary = {};
+            let total = 0;
+            
+            expenses.forEach(exp => {
+                total += exp.montant;
+                if (!summary[exp.categorie]) {
+                    summary[exp.categorie] = { total: 0, count: 0 };
+                }
+                summary[exp.categorie].total += exp.montant;
+                summary[exp.categorie].count += 1;
+            });
+            
+            document.getElementById('totalAmount').textContent = formatCurrency(total);
+            
+            const summaryList = document.getElementById('summaryList');
+            summaryList.innerHTML = '';
+            
+            if (Object.keys(summary).length === 0) {
+                summaryList.innerHTML = '<div class="empty-state">📊<br>Aucune dépense ce mois-ci</div>';
+                return;
+            }
+            
+            Object.entries(summary)
+                .sort((a, b) => b[1].total - a[1].total)
+                .forEach(([cat, data]) => {
+                    const item = document.createElement('div');
+                    item.className = 'summary-item';
+                    item.innerHTML = `
+                        <div class="summary-header">
+                            <div>
+                                <div class="summary-category">${cat}</div>
+                                <div class="summary-count">${data.count} dépense${data.count > 1 ? 's' : ''}</div>
+                            </div>
+                            <div class="summary-amount">${formatCurrency(data.total)}</div>
+                        </div>
+                    `;
+                    summaryList.appendChild(item);
+                });
+        }
+
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('fr-FR', {
+                style: 'currency',
+                currency: 'EUR'
+            }).format(amount);
+        }
+
+        function showMessage(message, type) {
+            const msgDiv = document.getElementById('statusMessage');
+            msgDiv.className = `status-message status-${type}`;
+            msgDiv.textContent = message;
+            setTimeout(() => msgDiv.className = '', 3000);
+        }
+
+        function syncData() {
+            showMessage('Fonction de synchronisation à configurer', 'success');
+        }
+
+        // Export vers Excel
+        function exportToExcel(scope) {
+            const expenses = scope === 'month' ? getCurrentMonthExpenses() : getExpenses().filter(e => e.manuelTel);
+            
+            if (expenses.length === 0) {
+                showMessage('Aucune dépense à exporter', 'error');
+                return;
+            }
+
+            // Préparer les données pour Excel selon votre format
+            const excelData = expenses.map(exp => ({
+                'Date': exp.date,
+                'Date2': '',
+                'Transaction': '',
+                'SousCategorie': exp.sousCategorie,
+                'Categorie': exp.categorie,
+                'Enseigne': exp.enseigne,
+                'Montant': exp.montant,
+                'Vide1': '',
+                'Vide2': '',
+                'Compte': exp.compte,
+                'Vide3': '',
+                'Kids': exp.kids ? 'oui' : 'non',
+                'Frequence BP': exp.periode,
+                'Vide4': exp.previsionnel ? 'oui' : 'non',
+                'Vide5': exp.manuelTel ? 'oui' : 'non'
+            }));
+
+            // Créer le classeur Excel
+            const ws = XLSX.utils.json_to_sheet(excelData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Dépenses");
+
+            // Ajuster la largeur des colonnes
+            const colWidths = [
+                {wch: 12}, // Date
+                {wch: 12}, // Date2
+                {wch: 30}, // Transaction
+                {wch: 40}, // SousCategorie
+                {wch: 30}, // Categorie
+                {wch: 25}, // Enseigne
+                {wch: 12}, // Montant
+                {wch: 8},  // Vide1
+                {wch: 8},  // Vide2
+                {wch: 15}, // Compte
+                {wch: 8},  // Vide3
+                {wch: 8},  // Kids
+                {wch: 12}, // Frequence
+                {wch: 12}, // Vide4
+                {wch: 12}  // Vide5
+            ];
+            ws['!cols'] = colWidths;
+
+            // Télécharger le fichier
+            const now = new Date();
+            const filename = scope === 'month' 
+                ? `depenses_${now.getFullYear()}_${(now.getMonth()+1).toString().padStart(2,'0')}.xlsx`
+                : `depenses_tout.xlsx`;
+            
+            XLSX.writeFile(wb, filename);
+            showMessage('Export Excel réussi !', 'success');
+        }
+
+        // Démarrer l'application
+        init();
+    </script>
+</body>
+</html>
